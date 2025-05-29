@@ -29,6 +29,7 @@
         const file = fileInput.files[0];
         const maxSize = document.getElementById('maxSize').value;
 
+        // Prepare form data for serverless function
         const formData = new FormData();
         formData.append('pdf_file', file);
         formData.append('max_size', maxSize);
@@ -39,6 +40,7 @@
             body: formData
           });
           if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
