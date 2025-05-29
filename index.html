@@ -15,47 +15,80 @@
   <input type="file" id="pdfFile" accept="application/pdf">
   <label for="maxSize">Max size (MB):</label>
   <input type="number" id="maxSize" value="10" min="1" step="1">
-  <button id="splitBtn">Split &amp; Download</button>
+  <button id="splitBtn">Split & Download</button>
 
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const splitBtn = document.getElementById('splitBtn');
-      splitBtn.addEventListener('click', async () => {
-        const fileInput = document.getElementById('pdfFile');
-        if (!fileInput.files.length) {
-          alert('Please select a PDF file.');
-          return;
-        }
-        const file = fileInput.files[0];
-        const maxSize = document.getElementById('maxSize').value;
+  document.getElementById('splitBtn').addEventListener('click', async () => {
+    const fileInput = document.getElementById('pdfFile');
+    if (!fileInput.files.length) { alert('Please select a PDF file.'); return; }
+    const file = fileInput.files[0];
+    const arrayBuffer = await file.arrayBuffer();
+    const srcPdf = await PDFLib.PDFDocument.load(arrayBuffer);
+    const totalPages = srcPdf.getPageCount();
+    const maxBytes = parseInt(document.getElementById('maxSize').value) * 1024 * 1024;
 
-        // Prepare form data for serverless function
-        const formData = new FormData();
-        formData.append('pdf_file', file);
-        formData.append('max_size', maxSize);
+    let pagesChunk = [];
+    let chunkIndex = 1;
+    const parts = [];
 
-        try {
-          const response = await fetch('/.netlify/functions/split-pdf', {
-            method: 'POST',
-            body: formData
-          });
-          if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+    for (let i = 0; i < totalPages; i++) {
+      const testPages = pagesChunk.concat(i);
+      const testDoc = await PDFLib.PDFDocument.create();
+      const copied = await testDoc.copyPages(srcPdf, testPages);
+      copied.forEach(p => testDoc.addPage(p));
+      const bytes = await testDoc.save();
 
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'pdf_parts.zip';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        } catch (err) {
-          console.error('Error:', err);
-          alert('An error occurred: ' + err.message);
-        }
-      });
-    });
+      if (bytes.byteLength <= maxBytes) {
+        pagesChunk = testPages;
+      } else {
+        if (pagesChunk.length === 0) pagesChunk = testPages;
+        // finalize this chunk
+        const outDoc = await PDFLib.PDFDocument.create();
+        const pagesToWrite = await outDoc.copyPages(srcPdf, pagesChunk);
+        pagesToWrite.forEach(p => outDoc.addPage(p));
+        const outBytes = await outDoc.save();
+        parts.push({ name: part_${chunkIndex}.pdf, blob: new Blob([outBytes], { type: 'application/pdf' }) });
+        chunkIndex++;
+        pagesChunk = [i];
+      }
+    }
+
+    // remaining pages
+    if (pagesChunk.length) {
+      const outDoc = await PDFLib.PDFDocument.create();
+      const pagesToWrite = await outDoc.copyPages(srcPdf, pagesChunk);
+      pagesToWrite.forEach(p => outDoc.addPage(p));
+      const outBytes = await outDoc.save();
+      parts.push({ name: part_${chunkIndex}.pdf, blob: new Blob([outBytes], { type: 'application/pdf' }) });
+    }
+
+    // package and download
+    if (parts.length > 1) {
+      const zip = new JSZip();
+      parts.forEach(p => zip.file(p.name, p.blob));
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'pdf_parts.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (parts.length === 1) {
+      const single = parts[0];
+      const url = URL.createObjectURL(single.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = single.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('No PDF pages were processed.');
+    }
+  });
   </script>
 </body>
 </html>
