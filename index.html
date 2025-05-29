@@ -8,7 +8,6 @@
     body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 0 20px; }
     h1 { text-align: center; }
     input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; font-size: 1rem; }
-    #downloads a { margin: 5px 0; display: inline-block; }
   </style>
 </head>
 <body>
@@ -16,8 +15,7 @@
   <input type="file" id="pdfFile" accept="application/pdf">
   <label for="maxSize">Max size (MB):</label>
   <input type="number" id="maxSize" value="10" min="1" step="1">
-  <button id="splitBtn">Split PDF</button>
-  <div id="downloads"></div>
+  <button id="splitBtn">Split & Download</button>
 
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
@@ -30,56 +28,65 @@
     const srcPdf = await PDFLib.PDFDocument.load(arrayBuffer);
     const totalPages = srcPdf.getPageCount();
     const maxBytes = parseInt(document.getElementById('maxSize').value) * 1024 * 1024;
-    let pages = [];
-    let part = 1;
-    const downloadsDiv = document.getElementById('downloads');
-    downloadsDiv.innerHTML = '';
+
+    let pagesChunk = [];
+    let chunkIndex = 1;
+    const parts = [];
 
     for (let i = 0; i < totalPages; i++) {
-      const testPages = pages.concat(i);
+      const testPages = pagesChunk.concat(i);
       const testDoc = await PDFLib.PDFDocument.create();
       const copied = await testDoc.copyPages(srcPdf, testPages);
       copied.forEach(p => testDoc.addPage(p));
       const bytes = await testDoc.save();
 
       if (bytes.byteLength <= maxBytes) {
-        pages = testPages;
+        pagesChunk = testPages;
       } else {
-        if (pages.length === 0) {
-          pages = testPages; // single page larger than max size
-        }
-        // finalize current part
-        const finalDoc = await PDFLib.PDFDocument.create();
-        const copiedPages = await finalDoc.copyPages(srcPdf, pages);
-        copiedPages.forEach(p => finalDoc.addPage(p));
-        const finalBytes = await finalDoc.save();
-        const blob = new Blob([finalBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `part_${part}.pdf`;
-        link.textContent = `Download part ${part}`;
-        downloadsDiv.appendChild(link);
-        downloadsDiv.appendChild(document.createElement('br'));
-
-        part++;
-        pages = [i];
+        if (pagesChunk.length === 0) pagesChunk = testPages;
+        // finalize this chunk
+        const outDoc = await PDFLib.PDFDocument.create();
+        const pagesToWrite = await outDoc.copyPages(srcPdf, pagesChunk);
+        pagesToWrite.forEach(p => outDoc.addPage(p));
+        const outBytes = await outDoc.save();
+        parts.push({ name: `part_${chunkIndex}.pdf`, blob: new Blob([outBytes], { type: 'application/pdf' }) });
+        chunkIndex++;
+        pagesChunk = [i];
       }
     }
 
-    // finalize remaining pages
-    if (pages.length) {
-      const finalDoc = await PDFLib.PDFDocument.create();
-      const copiedPages = await finalDoc.copyPages(srcPdf, pages);
-      copiedPages.forEach(p => finalDoc.addPage(p));
-      const finalBytes = await finalDoc.save();
-      const blob = new Blob([finalBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
+    // remaining pages
+    if (pagesChunk.length) {
+      const outDoc = await PDFLib.PDFDocument.create();
+      const pagesToWrite = await outDoc.copyPages(srcPdf, pagesChunk);
+      pagesToWrite.forEach(p => outDoc.addPage(p));
+      const outBytes = await outDoc.save();
+      parts.push({ name: `part_${chunkIndex}.pdf`, blob: new Blob([outBytes], { type: 'application/pdf' }) });
+    }
+
+    // package and download
+    if (parts.length > 1) {
+      const zip = new JSZip();
+      parts.forEach(p => zip.file(p.name, p.blob));
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `part_${part}.pdf`;
-      link.textContent = `Download part ${part}`;
-      downloadsDiv.appendChild(link);
+      link.download = 'pdf_parts.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (parts.length === 1) {
+      const single = parts[0];
+      const url = URL.createObjectURL(single.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = single.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('No PDF pages were processed.');
     }
   });
   </script>
