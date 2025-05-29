@@ -1,9 +1,0 @@
-{
-  "name": "pdf-splitter",
-  "version": "1.0.0",
-  "dependencies": {
-    "pdf-lib": "^1.28.0",
-    "jszip": "^3.10.0",
-    "busboy": "^1.6.0"
-  }
-}
