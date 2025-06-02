@@ -1,94 +1,474 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PDF Splitter by Size</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 0 20px; }
-    h1 { text-align: center; }
-    input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; font-size: 1rem; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR PDF Processor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+            opacity: 0.8;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            margin: 30px 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover .upload-icon {
+            transform: scale(1.1);
+            color: #764ba2;
+        }
+
+        .upload-text {
+            color: #333;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 0.95em;
+            opacity: 0.8;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            background: linear-gradient(135deg, #e8f2ff, #f0e8ff);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .process-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 10px;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            display: none;
+        }
+
+        .process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .process-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 10px;
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
+            display: none;
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(255, 107, 107, 0.4);
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status.processing {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            display: block;
+        }
+
+        .status.success {
+            background: linear-gradient(135deg, #d4edda, #a8e6cf);
+            color: #155724;
+            border: 1px solid #a8e6cf;
+            display: block;
+        }
+
+        .status.error {
+            background: linear-gradient(135deg, #f8d7da, #ffb3ba);
+            color: #721c24;
+            border: 1px solid #ffb3ba;
+            display: block;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200px 0; }
+            100% { background-position: 200px 0; }
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+            display: none;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(40, 167, 69, 0.4);
+            text-decoration: none;
+            color: white;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .upload-area {
+                padding: 40px 15px;
+            }
+            
+            .process-btn, .clear-btn, .download-btn {
+                padding: 12px 30px;
+                font-size: 1em;
+                margin: 10px 5px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h1>PDF Splitter by Size</h1>
-  <input type="file" id="pdfFile" accept="application/pdf">
-  <label for="maxSize">Max size (MB):</label>
-  <input type="number" id="maxSize" value="10" min="1" step="1">
-  <button id="splitBtn">Split & Download</button>
+    <div class="container">
+        <h1>📄 OCR PDF Processor</h1>
+        <p class="subtitle">Upload a PDF to convert it to a searchable document</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drop your PDF here or click to select</div>
+            <div class="upload-subtext">Supports PDF files</div>
+        </div>
+        
+        <input type="file" id="fileInput" accept=".pdf" />
+        
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <button class="process-btn" id="processBtn">
+            🔄 Process PDF
+        </button>
+        <button class="clear-btn" id="clearBtn">
+            🗑️ Clear
+        </button>
+        
+        <a href="#" class="download-btn" id="downloadBtn" style="display: none;">
+            ⬇️ Download Searchable PDF
+        </a>
+    </div>
 
-  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-  <script>
-  document.getElementById('splitBtn').addEventListener('click', async () => {
-    const fileInput = document.getElementById('pdfFile');
-    if (!fileInput.files.length) { alert('Please select a PDF file.'); return; }
-    const file = fileInput.files[0];
-    const arrayBuffer = await file.arrayBuffer();
-    const srcPdf = await PDFLib.PDFDocument.load(arrayBuffer);
-    const totalPages = srcPdf.getPageCount();
-    const maxBytes = parseInt(document.getElementById('maxSize').value) * 1024 * 1024;
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const processBtn = document.getElementById('processBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const status = document.getElementById('status');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const downloadBtn = document.getElementById('downloadBtn');
 
-    let pagesChunk = [];
-    let chunkIndex = 1;
-    const parts = [];
+        let selectedFile = null;
 
-    for (let i = 0; i < totalPages; i++) {
-      const testPages = pagesChunk.concat(i);
-      const testDoc = await PDFLib.PDFDocument.create();
-      const copied = await testDoc.copyPages(srcPdf, testPages);
-      copied.forEach(p => testDoc.addPage(p));
-      const bytes = await testDoc.save();
+        // Upload area click handler
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
 
-      if (bytes.byteLength <= maxBytes) {
-        pagesChunk = testPages;
-      } else {
-        if (pagesChunk.length === 0) pagesChunk = testPages;
-        // finalize this chunk
-        const outDoc = await PDFLib.PDFDocument.create();
-        const pagesToWrite = await outDoc.copyPages(srcPdf, pagesChunk);
-        pagesToWrite.forEach(p => outDoc.addPage(p));
-        const outBytes = await outDoc.save();
-        parts.push({ name: `part_${chunkIndex}.pdf`, blob: new Blob([outBytes], { type: 'application/pdf' }) });
-        chunkIndex++;
-        pagesChunk = [i];
-      }
-    }
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
 
-    // remaining pages
-    if (pagesChunk.length) {
-      const outDoc = await PDFLib.PDFDocument.create();
-      const pagesToWrite = await outDoc.copyPages(srcPdf, pagesChunk);
-      pagesToWrite.forEach(p => outDoc.addPage(p));
-      const outBytes = await outDoc.save();
-      parts.push({ name: `part_${chunkIndex}.pdf`, blob: new Blob([outBytes], { type: 'application/pdf' }) });
-    }
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
 
-    // package and download
-    if (parts.length > 1) {
-      const zip = new JSZip();
-      parts.forEach(p => zip.file(p.name, p.blob));
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'pdf_parts.zip';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else if (parts.length === 1) {
-      const single = parts[0];
-      const url = URL.createObjectURL(single.blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = single.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      alert('No PDF pages were processed.');
-    }
-  });
-  </script>
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                handleFileSelection(files[0]);
+            } else {
+                showStatus('Please select a valid PDF file.', 'error');
+            }
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelection(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelection(file) {
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = `Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            
+            fileInfo.style.display = 'block';
+            processBtn.style.display = 'inline-block';
+            clearBtn.style.display = 'inline-block';
+            downloadBtn.style.display = 'none';
+            
+            hideStatus();
+        }
+
+        // Process button click handler - this calls your backend
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                showStatus('Please select a PDF file first.', 'error');
+                return;
+            }
+
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<span class="spinner"></span>Processing...';
+            showStatus('Processing your PDF... This may take a few minutes.', 'processing');
+            progressContainer.style.display = 'block';
+            
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = progress + '%';
+            }, 500);
+
+            try {
+                // Create FormData to send the file to your backend
+                const formData = new FormData();
+                formData.append('pdf_file', selectedFile);
+
+                // Send to your backend API endpoint
+                const response = await fetch('/api/process-pdf', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+
+                if (response.ok) {
+                    // Get the processed file
+                    const processedFileBlob = await response.blob();
+                    
+                    // Create download URL
+                    const downloadUrl = URL.createObjectURL(processedFileBlob);
+                    downloadBtn.href = downloadUrl;
+                    downloadBtn.download = `searchable_${selectedFile.name}`;
+                    
+                    showStatus('✅ PDF processed successfully! Your searchable PDF is ready for download.', 'success');
+                    downloadBtn.style.display = 'inline-block';
+                } else {
+                    const errorText = await response.text();
+                    showStatus(`❌ Processing failed: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                showStatus(`❌ Error: ${error.message}. Please ensure your backend server is running.`, 'error');
+            } finally {
+                processBtn.disabled = false;
+                processBtn.innerHTML = '🔄 Process PDF';
+                progressContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+            }
+        });
+
+        // Clear button click handler
+        clearBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            processBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            downloadBtn.style.display = 'none';
+            progressContainer.style.display = 'none';
+            progressBar.style.width = '0%';
+            hideStatus();
+            
+            if (downloadBtn.href && downloadBtn.href.startsWith('blob:')) {
+                URL.revokeObjectURL(downloadBtn.href);
+            }
+        });
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function hideStatus() {
+            status.style.display = 'none';
+        }
+    </script>
 </body>
 </html>
